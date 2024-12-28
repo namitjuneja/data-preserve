@@ -138,10 +138,19 @@ def download_new_posts(session):
         )\
         .order_by(Post.date_saved.asc())\
         .limit(8)
-
+    
+    post_count = len(posts.all()) # this is inefficient and should not be done for long queries
+    print(f"Found {post_count} posts to download.\n")
 
     # pick 5 posts download them with wait timer of 5
-    for p in posts:
+    for idx, p in enumerate(posts):
+        print(f"\n===========Downloading ({idx+1}/{post_count})===========")
+        print("ID: ", p.id)
+        print("ACCOUNT: ", p.account)
+        print("URL: ", p.url)
+        print("COLLECTION: ", p.collection)
+        print(">>-<<")
+
         # check if it is a collection post or a non collection post
         # this is used to decide what folder is the reel downloaded in
         is_collection = p.collection is not None
@@ -152,8 +161,13 @@ def download_new_posts(session):
             p.last_download_failed = True
             print(e)
         session.commit()
-        print("Waiting...")
-        sleep(randint(10,15))
+
+        print("=========================================\n")
+
+        # Add a random wait time
+        random_waiting_time = randint(10,15)
+        print(f"Waiting for {random_waiting_time/60} minutes...")
+        sleep(random_waiting_time)
         print("Waiting over.")
 
 def play_videos():

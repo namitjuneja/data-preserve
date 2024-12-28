@@ -45,10 +45,7 @@ def extract_instagram_id(url):
 def download(video_url, filename, is_collection):
 
 
-    print("===Downloading===")
-    print("ID: ", filename)
-    print("URL: ", video_url)
-    print("is_collection: ", is_collection)
+    
 
 
     try:
@@ -70,12 +67,10 @@ def download(video_url, filename, is_collection):
             print("Status Code: ", response.status_code)
             print("Response: ", response)
             raise Exception("Non 200 response code")
-        print("=================")
     except Exception as e:
         print("XXX Download Failed XXX")
         print("Exception: ", e)
         raise
-        print("=================")
 
 def parse_saved_posts(saved_posts_raw):
     saved_posts = {}
