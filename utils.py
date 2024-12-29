@@ -131,7 +131,6 @@ for post in posts[:1]:
     try:
         session.add(new_post)
         session.commit()
-        print("\../")
     finally:
         session.close()
         engine.dispose()
