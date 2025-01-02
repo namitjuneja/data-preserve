@@ -1,0 +1,6 @@
+- Write a script that makes sure all reels are stored in their correct folders. 
+'reels' and 'reels_non_collection'
+- Make a cleanup script that removes duplicates because I renamed "yas" collection to "unknown user"
+- what happens when I delete reels?
+- what happens when I assign a reel to a collection?
+- It should never happen but check if something is marked downloaded but file is not present
