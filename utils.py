@@ -63,12 +63,12 @@ def download(video_url, filename, is_collection):
             print("--- Download Success ---")
             print("Response: ", response)
         else:
-            print("XXX Download Failed XXX")
+            print("X"*12 + "Download Failed" + "X"*12)
             print("Status Code: ", response.status_code)
             print("Response: ", response)
             raise Exception("Non 200 response code")
     except Exception as e:
-        print("XXX Download Failed XXX")
+        print("X"*12 + "Download Failed" + "X"*12)
         print("Exception: ", e)
         raise
 
