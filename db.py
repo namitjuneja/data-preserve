@@ -11,7 +11,7 @@ from time import sleep
 import argparse
 from subprocess import call
 
-from utils import get_post_type, file_exists, download, parse_saved_posts
+from utils import *
 
 # Define enum classes
 class PostType(enum.Enum):
@@ -75,17 +75,64 @@ def add_new_posts(session, file):
     # open the takout file
     with open(file) as f:
         new_saved_posts_raw = json.load(f)
-    
-    # convert takeout from insta format to a dictionary of collections
-    new_saved_posts = parse_saved_posts(new_saved_posts_raw)
 
-    # for each post check
-    # - same uuid doesn't already exist
-    # - the same post url - collection combination does not exist
-    # (same post can exist multiple times but with different collection)
-    for collection_name in new_saved_posts.keys():
-        for p in new_saved_posts[collection_name]:
-            assert collection_name == p['collection']
+    file_type = detect_file_type(file)
+    
+    if file_type == "collection":
+        # convert takeout from insta format to a dictionary of collections
+        new_saved_posts = parse_saved_posts(new_saved_posts_raw)
+    elif file_type == "non_collection":
+        # it is a list of posts that do not belong to a collection
+        new_saved_posts = parse_non_collection_saved_posts(new_saved_posts_raw)
+    
+
+    if file_type == "collection":
+        # for each post check
+        # - same uuid doesn't already exist
+        # - the same post url - collection combination does not exist
+        # (same post can exist multiple times but with different collection)
+        for collection_name in new_saved_posts.keys():
+            for p in new_saved_posts[collection_name]:
+                assert collection_name == p['collection']
+                # check uuid collision
+                # query all rows with the same uuid
+                # if found, keep assigning new uuids until no row is found with the same uuid
+                post_uuid = p['id']
+                posts_with_same_uuid = session.query(Post).filter(Post.id==post_uuid).count()
+                while posts_with_same_uuid > 0:
+                    print(f"UUID Collision Detected for id [{post_uuid}]. \n Assigning new UUID")
+                    post_uuid = shortuuid.ShortUUID().random(length=4)
+                    posts_with_same_uuid = session.query(Post).filter(Post.id==post_uuid).count()
+
+                # look for another row with the same post url - collection pair
+                duplicate_entry_count = session.query(Post)\
+                    .filter(
+                        and_(
+                            Post.url == p['url'],
+                            Post.collection == p['collection']
+                        )
+                    )\
+                    .count()
+                if duplicate_entry_count > 0:
+                    # print("Post Being Skipped: ", p)
+                    continue
+
+                new_post = Post(
+                    id=post_uuid,
+                    account=p['account'],
+                    url=p['url'],
+                    date_saved=p['date_saved'],
+                    collection=p['collection'],
+                    post_type=PostType(p['post_type']))
+                
+                print(new_post)
+                session.add(new_post)
+        session.commit()
+    elif file_type == "non_collection":
+        # for each post check
+        # - same uuid doesn't already exist
+        # - same url doesn't already exist
+        for p in new_saved_posts:
             # check uuid collision
             # query all rows with the same uuid
             # if found, keep assigning new uuids until no row is found with the same uuid
@@ -96,18 +143,17 @@ def add_new_posts(session, file):
                 post_uuid = shortuuid.ShortUUID().random(length=4)
                 posts_with_same_uuid = session.query(Post).filter(Post.id==post_uuid).count()
 
-            # look for another row with the same post url - collection pair
-            duplicate_entry_count = session.query(Post)\
-                .filter(
-                    and_(
-                        Post.url == p['url'],
-                        Post.collection == p['collection']
-                    )
-                )\
-                .count()
-            if duplicate_entry_count > 0:
-                # print("Duplicate Entry Post found")
-                # print("Post Being Skipped: ", p)
+            # query all the rows for the same url 
+            # if found skip it because 
+            # if it is a pre-existing collection row then it has no business beng a non-collection row
+            # if it is a pre-existing non-collection row then it will lead to duplication
+            # insta is sending bad quality data
+            post_url = p['url']
+            posts_with_same_url = session.query(Post).filter(Post.url==post_url).all()
+            if len(posts_with_same_url) > 0:
+                print(f"Skipping. Existing post(s) IDs: ")
+                [print(f"ID: {duplicate_post.id} | account: {duplicate_post.account}") for duplicate_post in posts_with_same_url]
+                print("X"*50)
                 continue
 
             new_post = Post(
@@ -120,8 +166,7 @@ def add_new_posts(session, file):
             
             print(new_post)
             session.add(new_post)
-    session.commit()
-
+        session.commit()
 
     # confirm non collission hash
     # add to db

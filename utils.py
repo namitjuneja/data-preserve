@@ -63,14 +63,23 @@ def download(video_url, filename, is_collection):
             print("--- Download Success ---")
             print("Response: ", response)
         else:
-            print("X"*12 + "Download Failed" + "X"*12)
+            print("X"*50 + "Download Failed" + "X"*50)
             print("Status Code: ", response.status_code)
             print("Response: ", response)
             raise Exception("Non 200 response code")
     except Exception as e:
-        print("X"*12 + "Download Failed" + "X"*12)
+        print("X"*50 + "Download Failed" + "X"*50)
         print("Exception: ", e)
         raise
+
+def detect_file_type(filepath):
+    filename = os.path.basename(filepath)
+    if filename == "saved_collections.json":
+        return "collection"
+    elif filename == "saved_posts.json":
+        return "non_collection"
+    else:
+        raise Exception("INCOMPATIBLE FILE FOUND")
 
 def parse_saved_posts(saved_posts_raw):
     saved_posts = {}
@@ -95,6 +104,19 @@ def parse_saved_posts(saved_posts_raw):
             saved_posts[current_collection_title].append(reel)
     return saved_posts
 
+def parse_non_collection_saved_posts(saved_posts_raw):
+    saved_posts = []
+    for p in saved_posts_raw['saved_saved_media']:
+        reel = {
+            'id':shortuuid.ShortUUID().random(length=4),
+            'account':p['title'] if 'title' in p else None,
+            'url':p['string_map_data']['Saved on']['href'],
+            'date_saved':datetime.fromtimestamp(p['string_map_data']['Saved on']['timestamp']),
+            'collection':None,
+            'post_type':get_post_type(p['string_map_data']['Saved on']['href'])
+        }
+        saved_posts.append(reel)
+    return saved_posts
 
 """
 #Code for transfering saved posts pickle to db
