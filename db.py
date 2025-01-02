@@ -9,6 +9,7 @@ import shortuuid
 from random import randint
 from time import sleep
 import argparse
+from subprocess import call
 
 from utils import get_post_type, file_exists, download, parse_saved_posts
 
@@ -59,7 +60,7 @@ def init_db():
 def get_session():
     """Creates a session attached to an existing sqlite file based db"""
     # Create SQLite database engine
-    engine = create_engine('sqlite:///reels.sqlite')
+    engine = create_engine('sqlite:////home/namit/Downloads/ig_saved/reels.sqlite')
 
     # Create session factory
     Session = sessionmaker(bind=engine)
@@ -132,12 +133,11 @@ def download_new_posts(session):
             and_(
                 Post.is_downloaded == False,
                 Post.last_download_failed == False,
-                Post.post_type == "REEL",
-                Post.collection == None
+                Post.post_type == "REEL"
             )
         )\
         .order_by(Post.date_saved.asc())\
-        .limit(8)
+        .limit(30)
     
     post_count = len(posts.all()) # this is inefficient and should not be done for long queries
     print(f"Found {post_count} posts to download.\n")
@@ -167,11 +167,41 @@ def download_new_posts(session):
         # Add a random wait time
         random_waiting_time = randint(10,15)
         print(f"Waiting for {random_waiting_time/60} minutes...")
-        sleep(random_waiting_time)
+        #sleep(random_waiting_time)
         print("Waiting over.")
 
-def play_videos():
-    pass
+def play_videos(collection=None):
+
+    collection = None if collection == "None" else collection # figure out a cleaner way to do this
+
+    posts = session.query(Post)\
+        .filter(
+            and_(
+                Post.is_downloaded == True,
+                Post.post_type == "REEL",
+                Post.collection == collection
+            )
+        )\
+        .order_by(Post.date_saved.asc())
+
+    # which folder to fetch the files from
+    if collection and collection.lower() != "None":
+        folder_prefix = "/home/namit/Downloads/ig_saved/reels/"
+    else:
+        folder_prefix = "/home/namit/Downloads/ig_saved/reels_non_collection/"
+
+    post_list = []
+    for p in posts:
+        post_address = folder_prefix + p.id + ".mp4"
+        post_list.append(post_address)
+
+    print(f"Playing collection \"{collection}\" with {len(post_list)} videos.")
+
+    # launch vlc with the list of posts
+    call(["vlc"] + post_list)
+    
+
+
 
 def sync_download_status(session):
     # query all posts where is_downloaded is False 
@@ -202,14 +232,18 @@ if __name__ == '__main__':
     # add a command line positional argument called action
     # action can have only 3 valid values
     parser.add_argument('action', 
-                        choices=['download', 'sync-download-status', 'add-new-posts'],
+                        choices=['download', 'sync-download-status', 'add-new-posts', 'play'],
                         help='Action to execute: \
                               download (download new posts), \
                               sync-download-status (sync downloaded status for manually downloaded posts), \
-                              add-new-posts (add new posts from the instagram takeout file)')
+                              add-new-posts (add new posts from the instagram takeout file)\
+                              play (play downloaded videos from a particular collection, "None" for no collection)')
     # Add file path argument for add-new-posts command
     parser.add_argument('--file', type=str,
                       help='Path to the JSON file (required for add-posts command)')
+    # Add collection name to play command
+    parser.add_argument('--collection_name', type=str,
+                      help='Name of the collection whose videos you want to play (required for the play command)')
     args = parser.parse_args()
 
     try:
@@ -222,6 +256,10 @@ if __name__ == '__main__':
             if not args.file:
                 parser.error("sync-posts command requires --file argument")
             add_new_posts(session, args.file)
+        elif args.action == 'play':
+            if not args.collection_name:
+                parser.error("play command requires --collection_name argument")
+            play_videos(args.collection_name)
     finally:
         # Clean up
         session.close()
