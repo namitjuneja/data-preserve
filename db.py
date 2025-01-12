@@ -172,6 +172,31 @@ def add_new_posts(session, file):
     # add to db
 
 def download_new_posts(session):
+    # Print total posts remaining to be downloaded - just to get an idea
+    total_undownloaded_collection_posts = session.query(Post)\
+        .filter(
+            and_(
+                Post.is_downloaded == False,
+                Post.last_download_failed == False,
+                Post.post_type == "REEL",
+                Post.collection != None
+            )
+        ).count()
+    total_undownloaded_non_collection_posts = session.query(Post)\
+        .filter(
+            and_(
+                Post.is_downloaded == False,
+                Post.last_download_failed == False,
+                Post.post_type == "REEL",
+                Post.collection == None
+            )
+        ).count()
+    print("Total un-downloaded collection posts: ", total_undownloaded_collection_posts)
+    print("Total un-downloaded non-collection posts: ", total_undownloaded_non_collection_posts)
+    print("Total un-downloaded posts: ", total_undownloaded_collection_posts + total_undownloaded_non_collection_posts)
+
+
+
     # query posts where is_downloaded is 0 and last_download_failed is 0
     posts = session.query(Post)\
         .filter(
@@ -182,7 +207,7 @@ def download_new_posts(session):
             )
         )\
         .order_by(Post.date_saved.asc())\
-        .limit(30)
+        .limit(55)
     
     post_count = len(posts.all()) # this is inefficient and should not be done for long queries
     print(f"Found {post_count} posts to download.\n")
@@ -272,7 +297,6 @@ if __name__ == '__main__':
     # Connect to an existing sqlite db
     engine, session = get_session()
 
-
     parser = argparse.ArgumentParser(description='Instagram Post Management Tool')
     # add a command line positional argument called action
     # action can have only 3 valid values
@@ -309,9 +333,5 @@ if __name__ == '__main__':
         # Clean up
         session.close()
         engine.dispose()
-
-    # loop through saved posts and commit them to the db
-
-    # repeat for non collection_posts
     
     
