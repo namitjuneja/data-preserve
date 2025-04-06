@@ -226,9 +226,10 @@ def download_new_posts(session):
         # check if it is a collection post or a non collection post
         # this is used to decide what folder is the reel downloaded in
         is_collection = p.collection is not None
+        is_reel = p.post_type == "REEL"
            
         try:
-            download(p.url, p.id, is_collection)
+            download(p.url, p.id, is_collection, is_reel)
             p.is_downloaded = True
         except Exception as e:
             p.last_download_failed = True

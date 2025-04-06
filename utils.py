@@ -42,12 +42,42 @@ def extract_instagram_id(url):
         print("Video ID not found in url: ", url)
     return None
 
-def download(video_url, filename, is_collection):
+def download(url, filename, is_collection, is_reel):
+    if is_reel:
+        download_reel(url, filename, is_collection)
+    else:
+        download_photo(url, filename, is_collection)
 
+def download_photo(photo_url, filename, is_collection):
+    try:
+        download_folder = "photos" if is_collection else "photos_non_collection"
+        L = instaloader.Instaloader()
+        photo_id = extract_instagram_id(photo_url)
+        print(photo_id)
+        post = Post.from_shortcode(L.context, video_id)
+        urls = [img.display_url for img in post.get_sidecar_nodes()]
 
-    
+        # create folder for the post
+        download_location = download_folder + "/" + filename
+        os.mkdir(download_location)
+        
+        for idx,url in enumerate(urls):
+            response = requests.get(url).content
+            with open(download_location + "/" + idx + '.jpeg', 'wb') as handler:
+                handler.write(response)
+            print("--- Download Success ---")
+            print("Response: ", response)
+        else:
+            print("X"*50 + "Download Failed" + "X"*50)
+            print("Status Code: ", response.status_code)
+            print("Response: ", response)
+            raise Exception("Non 200 response code")
+    except Exception as e:
+        print("X"*50 + "Download Failed" + "X"*50)
+        print("Exception: ", e)
+        raise
 
-
+def download_reel(video_url, filename, is_collection):
     try:
         download_folder = "reels" if is_collection else "reels_non_collection"
         L = instaloader.Instaloader()
