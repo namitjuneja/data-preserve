@@ -63,7 +63,7 @@ def init_db():
 def get_session():
     """Creates a session attached to an existing sqlite file based db"""
     # Create SQLite database engine
-    engine = create_engine('sqlite:////home/namit/Downloads/ig_saved/reels.sqlite')
+    engine = create_engine('sqlite:///reels.sqlite')
 
     # Create session factory
     Session = sessionmaker(bind=engine)
@@ -210,7 +210,7 @@ def download_new_posts(session):
             )
         )\
         .order_by(Post.date_saved.asc())\
-        .limit(55)
+        .limit(10)
     
     post_count = len(posts.all()) # this is inefficient and should not be done for long queries
     print(f"Found {post_count} posts to download.\n")
@@ -227,8 +227,7 @@ def download_new_posts(session):
         # check if it is a collection post or a non collection post
         # this is used to decide what folder is the reel downloaded in
         is_collection = p.collection is not None
-        is_reel = p.post_type == "REEL"
-           
+        is_reel = p.post_type == PostType.REEL
         try:
             download(p.url, p.id, is_collection, is_reel)
             p.is_downloaded = True
