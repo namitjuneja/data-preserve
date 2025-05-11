@@ -53,8 +53,7 @@ def download_photo(photo_url, filename, is_collection):
         download_folder = "photos" if is_collection else "photos_non_collection"
         L = instaloader.Instaloader()
         photo_id = extract_instagram_id(photo_url)
-        print(photo_id)
-        post = Post.from_shortcode(L.context, video_id)
+        post = Post.from_shortcode(L.context, photo_id)
         urls = [img.display_url for img in post.get_sidecar_nodes()]
 
         # create folder for the post

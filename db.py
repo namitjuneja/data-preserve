@@ -12,6 +12,7 @@ import argparse
 from subprocess import call
 import os
 import shutil
+import pyperclip
 
 from utils import *
 
@@ -247,13 +248,14 @@ def download_new_posts(session):
 def play_videos(collection=None):
 
     collection = None if collection == "None" else collection # figure out a cleaner way to do this
+    collection = "flirt"
 
     posts = session.query(Post)\
         .filter(
             and_(
                 Post.is_downloaded == True,
                 Post.post_type == "REEL",
-                Post.collection == "Recipes"
+                Post.collection == collection
             )
         )\
         .order_by(Post.date_saved.asc())
@@ -269,7 +271,11 @@ def play_videos(collection=None):
         post_address = folder_prefix + p.id + ".mp4"
         post_list.append(post_address)
 
+    print("\n\n")
+    print("="*50)
     print(f"Playing collection \"{collection}\" with {len(post_list)} videos.")
+    print("="*50)
+    print("\n\n")
 
     # launch vlc with the list of posts
     call(["vlc"] + post_list)
@@ -386,7 +392,17 @@ def remove_duplicates(session):
 
         print("="*25)
 
-
+def find_link(session, id):
+    """
+    Given a post ID, return the instagram URL of the post 
+    """
+    result = session.query(Post).filter(Post.id==id).first()
+    if result:
+        print(result.url)
+        pyperclip.copy(result.url)
+        print("Copied to clipboard!")
+    else:
+        print(f"No post found with id: {id}")
 
 
 if __name__ == '__main__':
@@ -402,19 +418,23 @@ if __name__ == '__main__':
     # add a command line positional argument called action
     # action can have only 3 valid values
     parser.add_argument('action', 
-                        choices=['download', 'sync-download-status', 'add-new-posts', 'play', 'remove-duplicates'],
+                        choices=['download', 'sync-download-status', 'add-new-posts', 'play', 'remove-duplicates', 'find-link'],
                         help='Action to execute: \
                               download (download new posts), \
                               sync-download-status (sync downloaded status for manually downloaded posts), \
                               add-new-posts (add new posts from the instagram takeout file)\
                               play (play downloaded videos from a particular collection, "None" for no collection),\
-                              remove-duplicates (remove reels that exist in both collection and non-collection)')
+                              remove-duplicates (remove reels that exist in both collection and non-collection),\
+                              find-link (print IG URL for a given 4 charachter post ID)')
     # Add file path argument for add-new-posts command
     parser.add_argument('--file', type=str,
                       help='Path to the JSON file (required for add-posts command)')
     # Add collection name to play command
     parser.add_argument('--collection_name', type=str,
                       help='Name of the collection whose videos you want to play (required for the play command)')
+    # Add post ID argument for the find_link argument
+    parser.add_argument('--id', type=str,
+                      help='4 charachter ID used to identify a post in the database')
     args = parser.parse_args()
 
     try:
@@ -433,6 +453,10 @@ if __name__ == '__main__':
             play_videos(args.collection_name)
         elif args.action == 'remove-duplicates':
             remove_duplicates(session)
+        elif args.action == 'find-link':
+            if not args.id:
+                parser.error("find-link command requires --id argument")
+            find_link(session, args.id)
     finally:
         # Clean up
         session.close()
