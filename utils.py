@@ -53,27 +53,35 @@ def download_photo(photo_url, filename, is_collection):
         download_folder = "photos" if is_collection else "photos_non_collection"
         L = instaloader.Instaloader()
         photo_id = extract_instagram_id(photo_url)
-        print(photo_id)
-        post = Post.from_shortcode(L.context, video_id)
+        post = Post.from_shortcode(L.context, photo_id)
         urls = [img.display_url for img in post.get_sidecar_nodes()]
+        print(urls)
 
         # create folder for the post
         download_location = download_folder + "/" + filename
         os.mkdir(download_location)
+        print(download_location)
         
         for idx,url in enumerate(urls):
-            response = requests.get(url).content
-            with open(download_location + "/" + idx + '.jpeg', 'wb') as handler:
-                handler.write(response)
+            print("creating response object")
+            response = requests.get(url)
+
+            import pickle
+            with open('data.pkl', 'wb') as f:
+                pickle.dump(post, f)
+                print("post saved")
+
+            with open(download_location + "/" + str(idx) + '.jpeg', 'wb') as handler:
+                handler.write(response.content)
             print("--- Download Success ---")
             print("Response: ", response)
         else:
-            print("X"*50 + "Download Failed" + "X"*50)
+            print("X"*50 + "Download Failed (photos)" + "X"*50)
             print("Status Code: ", response.status_code)
             print("Response: ", response)
             raise Exception("Non 200 response code")
     except Exception as e:
-        print("X"*50 + "Download Failed" + "X"*50)
+        print("X"*50 + "Download Failed (photos)" + "X"*50)
         print("Exception: ", e)
         raise
 
@@ -93,12 +101,12 @@ def download_reel(video_url, filename, is_collection):
             print("--- Download Success ---")
             print("Response: ", response)
         else:
-            print("X"*50 + "Download Failed" + "X"*50)
+            print("X"*50 + "Download Failed (videos)" + "X"*50)
             print("Status Code: ", response.status_code)
             print("Response: ", response)
             raise Exception("Non 200 response code")
     except Exception as e:
-        print("X"*50 + "Download Failed" + "X"*50)
+        print("X"*50 + "Download Failed (videos)" + "X"*50)
         print("Exception: ", e)
         raise
 
